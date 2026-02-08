@@ -1,147 +1,111 @@
 package com.example.viikko4.view
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.outlined.AddCircle
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.viikko4.model.Task
 import com.example.viikko4.viewmodel.TaskViewModel
-import kotlin.text.isNotEmpty
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    modifier: Modifier = Modifier,
-    viewModel: TaskViewModel = viewModel()
+    viewModel: TaskViewModel,
+    onTaskClick: (Int) -> Unit = {},
+    onAddClick: () -> Unit = {},
+    onNavigateCalendar: () -> Unit = {},
+    onNavigateSettings: () -> Unit = {}
 ) {
+    // Haetaan flowsta lista tehtävistä ja valittu tehtävä
     val taskList by viewModel.tasks.collectAsState()
     val selectedTask by viewModel.selectedTask.collectAsState()
+    val addTaskFlag by viewModel.addTaskDialogVisible.collectAsState()
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    Column(modifier = Modifier.padding(16.dp)) {
 
-        // App title
-        Text(
-            text = "TODO APP",
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold
+        // Yläpalkki, jossa navigointi
+        TopAppBar(
+            title = { Text("Task List") },
+            actions = {
+                IconButton(onClick = onNavigateCalendar) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = "Go to calendar")
+                }
+                IconButton(onClick = onNavigateSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = "Go to settings")
+                }
+            }
         )
 
-        // Todo list task rows
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        // Add Task -nappi
+        Row {
+            Button(onClick = onAddClick, modifier = Modifier.padding(8.dp)) {
+                Text("Add Task")
+            }
+        }
+
+        // Lista tehtävistä
+        LazyColumn {
             items(taskList) { task ->
-                Card(modifier = Modifier.clickable {viewModel.selectTask(task)}) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                task.title,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(6f)
-                            )
-                            Text("${task.priority}", modifier = Modifier.weight(1f))
-                            Text(task.dueDate, modifier = Modifier.weight(4f))
-                            IconToggleButton(
-                                checked = task.done,
-                                onCheckedChange = { viewModel.toggleDone(task.id) },
-                                modifier = Modifier.weight(2f)
-
-                            ) {
-                                if (task.done) Icon(
-                                    Icons.Filled.CheckCircle,
-                                    contentDescription = "Done"
-                                )
-                                else Icon(
-                                    Icons.Outlined.CheckCircle,
-                                    contentDescription = "Not Done"
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.removeTask(task.id) },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Remove")
-                            }
-
+                Card(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .clickable { onTaskClick(task.id) } // avaa tehtävän muokkausta
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(task.title, style = MaterialTheme.typography.headlineSmall)
+                            Text(task.description)
                         }
-                        if (task.description.isNotEmpty()) Text(text = task.description)
+                        Checkbox(
+                            checked = task.done,
+                            onCheckedChange = { viewModel.toggleDone(task.id) } // vaihtaa done-tilaa
+                        )
                     }
                 }
             }
         }
-
-        // Add tasks
-        var text by remember { mutableStateOf("") }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Write tasks") },
-                modifier = Modifier.weight(4f)
-            )
-
-            IconButton(
-                onClick = {
-                    val newTask = Task(
-                        id = taskList.size + 1,
-                        title = text,
-                        priority = 1,
-                        description = "",
-                        dueDate = "2026-01-18",
-                        done = false
-                    )
-                    viewModel.addTask(newTask)
-                    text = ""
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    Icons.Outlined.AddCircle,
-                    contentDescription = "Add task",
-                )
-            }
-        }
-
-        // Filter and sort buttons
-        Row {
-            Button(onClick = { viewModel.sortByDueDate() }) { Text("Sort By Due Date") }
-            Button(onClick = { viewModel.filterByDone(true) }) { Text("Filter By Done") }
-        }
     }
 
-    // Detail screen
-    if(selectedTask != null) {
-        DetailScreen(
+    // Näytetään muokkausdialogi, jos tehtävä valittu
+    if (selectedTask != null) {
+        EditDialog(
             task = selectedTask!!,
-            onClose = {viewModel.closeDialog()},
-            onUpdate = {
-                viewModel.updateTask(it)
-                viewModel.closeDialog()
-            })
+            onClose = { viewModel.closeDialog() },
+            onUpdate = { viewModel.updateTask(it) },
+            onDelete = { task -> viewModel.removeTask(task.id) } // poistaa tehtävän id:n mukaan
+        )
+    }
+
+    // Näytetään lisäysdialogi
+    if (addTaskFlag) {
+        AddDialog(
+            onClose = { viewModel.addTaskDialogVisible.value = false },
+            onSave = { viewModel.addTask(it) }
+        )
     }
 }
